@@ -61,7 +61,7 @@ class Trader {
                 /// deadline = 2 min
                 console.log("amountOutMin",amountOutMin);
                 
-                let deadline = new Decimal(Date.now()).div(1000).floor().plus(120).toString()
+                let deadline = new Decimal(Date.now()).div(1000).floor().plus(120).toHex()
                 console.log("deadline",deadline);
                 const amountIn = this.bnbWantToBuy*10**18;
                 console.log("amountIn",amountIn);
@@ -75,7 +75,7 @@ class Trader {
 
 
             
-                const receipt = await this.router.methods.swapExactETHForTokensSupportingFeeOnTransferTokens(amountOutMin.toString(), path, this.address, deadline).send({ gasPrice: this.gasPrice ,gasLimit:this.gasLimit,from :this.address ,value : amountIn});
+                const receipt = await this.router.methods.swapExactETHForTokensSupportingFeeOnTransferTokens(amountOutMin.toHex(), path, this.address, deadline).send({ gasPrice: this.gasPrice ,gasLimit:this.gasLimit,from :this.address ,value : amountIn});
                 if(receipt.status === true){
                     console.log("buy success");
                     this.buyed = true;
