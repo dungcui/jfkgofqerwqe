@@ -1,9 +1,6 @@
 const Web3 = require("web3");
 const abi = require("../contracts/abi")
 
-let nodeUrl = "https://bsc-dataseed2.defibit.io/";
-let node2 = "https://bsc-dataseed1.defibit.io/"
-let tempnode = "https://bsc-dataseed1.defibit.io/";
 const Provider = require('@truffle/hdwallet-provider');
 const { Decimal } = require("decimal.js");
 var Promise = require("bluebird");
@@ -13,6 +10,14 @@ require('dotenv').config();
 class Trader {
     
     constructor(){
+
+        this.nodeUrls = [
+            "https://bsc-dataseed1.defibit.io/",
+            "https://bsc-dataseed2.defibit.io/",
+            "https://bsc-dataseed.binance.org/",
+        ];
+        this.iNodeUrl = 0;
+
         this.privateKey = process.env.privateKey;
         this.address = process.env.address;
         this.tokenAdress = process.env.tokenAdress;
@@ -22,8 +27,8 @@ class Trader {
         this.gasPrice = process.env.gasPrice;
         this.gasLimit = process.env.gasLimit;
         this.buyed = false;
-        this.provider = new Provider(this.privateKey, nodeUrl)
-        this.web3 = new Web3(this.provider) 
+        const provider = new Provider(this.privateKey, this.nodeUrls[this.iNodeUrl % this.nodeUrls.length]);
+        this.web3 = new Web3(provider);
         this.bnbWantToBuy = process.env.bnbWantToBuy;
         this.router = new this.web3.eth.Contract(
             abi,
@@ -90,19 +95,23 @@ class Trader {
                 await this.trade(balance);
             }
     }
-    async reconnect(){
-        try{
-            tempnode = node2;
-            node2=nodeUrl;
-            nodeUrl=tempnode;
-            this.provider = new Provider(this.privateKey, nodeUrl)
-            this.web3 = new Web3(this.provider)  
-        }catch(ex){
-            Promise.delay(this.delayTime);
-            await this.reconnect()
+    async connectProvider() {
+        try {
+          const nodeUrl = this.nodeUrls[this.iNodeUrl % this.nodeUrls.length];
+          console.log('>>>>> Use NodeURL:', nodeUrl);
+      
+          const provider = new Provider(this.privateKey, this.nodeUrls[this.iNodeUrl % this.nodeUrls.length]);
+          this.web3 = new Web3(provider);
+               
+          this.web3.eth._provider.engine.on("error", async () => {
+            this.iNodeUrl += 1;
+            this.connectProvider();
+          });
+        } catch (error) {
+          this.iNodeUrl += 1;
+          this.connectProvider();
         }
-       
-    }
+      }
 
 
     async trade(balance){
@@ -110,15 +119,7 @@ class Trader {
             // console.log("address",address)
             // console.log("privateKey",privateKey)
             // console.log("tokenAdress",tokenAdress)
-            this.web3.eth._provider.engine.on("error", async () => {
-                try{
-                    await this.reconnect()
-                    await this.trade(balance);
-                }catch(ex){
-                    await this.reconnect() 
-                    await this.trade(balance);
-                }
-            });    
+            await this.connectProvider()
             while(!this.buyed){
                 try{
                     Promise.delay(this.delayTime);
