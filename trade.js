@@ -1,11 +1,10 @@
 const trade = require('./src/trader');
-try{
-    trade.run();
-}catch(ex){
-    console.log(ex);
-    trade.run();
-}
 
+trade.run();
+process.on('uncaughtException', err => {
+    console.error(err && err.stack)
+    trade.run();
+});
 
 
 

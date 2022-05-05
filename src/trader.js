@@ -4,40 +4,46 @@ const abi = require("../contracts/abi")
 const Provider = require('@truffle/hdwallet-provider');
 const { Decimal } = require("decimal.js");
 var Promise = require("bluebird");
-
-require('dotenv').config();
+const { address ,privateKey ,tokenAdress ,tokenDecimal ,bnbWantToBuy ,shippable ,delayTime  ,gasPrice  ,gasLimit  } = require("../config.js")
 
 class Trader {
     
     constructor(){
 
         this.nodeUrls = [
+            "https://bscrpc.com/",
             "https://bsc-dataseed1.defibit.io/",
             "https://bsc-dataseed2.defibit.io/",
             "https://bsc-dataseed.binance.org/",
         ];
         this.iNodeUrl = 0;
 
-        this.privateKey = process.env.privateKey;
-        this.address = process.env.address;
-        this.tokenAdress = process.env.tokenAdress;
-        this.tokenDecimal = process.env.tokenDecimal;
-        this.sippable = process.env.shippable;
-        this.delayTime = process.env.delayTime;
-        this.gasPrice = process.env.gasPrice;
-        this.gasLimit = process.env.gasLimit;
+        this.privateKey = privateKey;
+        this.address = address;
+        this.tokenAdress = tokenAdress;
+        this.tokenDecimal = tokenDecimal;
+        this.sippable = shippable;
+        this.delayTime = delayTime;
+        this.gasPrice = gasPrice;
+        this.gasLimit = gasLimit;
         this.buyed = false;
         const provider = new Provider(this.privateKey, this.nodeUrls[this.iNodeUrl % this.nodeUrls.length]);
         this.web3 = new Web3(provider);
-        this.bnbWantToBuy = process.env.bnbWantToBuy;
+        this.bnbWantToBuy = bnbWantToBuy;
         this.router = new this.web3.eth.Contract(
             abi,
             '0x10ED43C718714eb63d5aA57B78B54704E256024E'
           );
     }
     async run(){
-         const balance = await this.web3.eth.getBalance(this.address);
-         await this.trade(balance);
+        try {
+            const balance = await this.web3.eth.getBalance(this.address);
+            await this.trade(balance);
+        } catch(ex){
+            await this.connectProvider();
+            await  this.run()
+        }
+         
     }
 
     async doGetPriceAndTrade(balance){
@@ -68,7 +74,7 @@ class Trader {
                 
                 let deadline = new Decimal(Date.now()).div(1000).floor().plus(120).toHex()
                 console.log("deadline",deadline);
-                const amountIn = this.bnbWantToBuy*10**18;
+                const amountIn = new Decimal(this.bnbWantToBuy).mul(10**18).toHex();
                 console.log("amountIn",amountIn);
                 console.log("amountOutMin",amountOutMin);
 
@@ -80,7 +86,7 @@ class Trader {
 
 
             
-                const receipt = await this.router.methods.swapExactETHForTokensSupportingFeeOnTransferTokens(amountOutMin.toHex(), path, this.address, deadline).send({ gasPrice: this.gasPrice ,gasLimit:this.gasLimit,from :this.address ,value : amountIn});
+                const receipt = await this.router.methods.swapExactETHForTokens(amountOutMin.toHex(), path, this.address, deadline).send({ gasPrice: this.gasPrice ,gasLimit:this.gasLimit,from :this.address ,value : amountIn});
                 if(receipt.status === true){
                     console.log("buy success");
                     this.buyed = true;
